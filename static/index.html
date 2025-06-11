@@ -2,8 +2,9 @@
 <html>
 <head>
   <title>Hitbox Comparer Web</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: sans-serif; }
+    body { font-family: sans-serif; margin: 0; }
     #controls { float: left; width: 220px; }
     #canvas-container { margin-left: 240px; height: 100vh; }
     canvas { border: 1px solid #888; width: 100%; height: 100%; display: block; }
@@ -19,6 +20,32 @@
     }
     .tree-arrow.expanded {
       transform: rotate(90deg);
+    }
+
+    /* --- Responsive styles --- */
+    @media (max-width: 700px) {
+      #controls {
+        float: none;
+        width: 100%;
+        margin: 0;
+      }
+      #canvas-container {
+        margin-left: 0;
+        height: 60vh;
+      }
+      canvas {
+        height: 60vh;
+        min-height: 200px;
+      }
+    }
+    @media (max-width: 700px) {
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      #controls, #canvas-container {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -384,6 +411,67 @@
       panY = e.offsetY - my * zoom;
       drawAll();
     }, {passive:false});
+
+    // Touch support for pan/zoom
+    let lastTouchDist = null;
+    let lastTouchMid = null;
+    canvas.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 1) {
+        isDragging = true;
+        lastX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+        lastY = e.touches[0].clientY - canvas.getBoundingClientRect().top;
+      } else if (e.touches.length === 2) {
+        isDragging = false;
+        const [t1, t2] = e.touches;
+        lastTouchDist = Math.hypot(
+          t2.clientX - t1.clientX,
+          t2.clientY - t1.clientY
+        );
+        lastTouchMid = {
+          x: (t1.clientX + t2.clientX) / 2 - canvas.getBoundingClientRect().left,
+          y: (t1.clientY + t2.clientY) / 2 - canvas.getBoundingClientRect().top
+        };
+      }
+    }, {passive: false});
+    canvas.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      if (e.touches.length === 1 && isDragging) {
+        let x = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+        let y = e.touches[0].clientY - canvas.getBoundingClientRect().top;
+        panX += x - lastX;
+        panY += y - lastY;
+        lastX = x;
+        lastY = y;
+        drawAll();
+      } else if (e.touches.length === 2) {
+        const [t1, t2] = e.touches;
+        let dist = Math.hypot(
+          t2.clientX - t1.clientX,
+          t2.clientY - t1.clientY
+        );
+        let mid = {
+          x: (t1.clientX + t2.clientX) / 2 - canvas.getBoundingClientRect().left,
+          y: (t1.clientY + t2.clientY) / 2 - canvas.getBoundingClientRect().top
+        };
+        if (lastTouchDist && lastTouchMid) {
+          let scale = dist / lastTouchDist;
+          // Zoom around midpoint
+          let mx = (lastTouchMid.x - panX) / zoom;
+          let my = (lastTouchMid.y - panY) / zoom;
+          zoom *= scale;
+          panX = lastTouchMid.x - mx * zoom;
+          panY = lastTouchMid.y - my * zoom;
+          drawAll();
+        }
+        lastTouchDist = dist;
+        lastTouchMid = mid;
+      }
+    }, {passive: false});
+    canvas.addEventListener('touchend', function(e) {
+      isDragging = false;
+      lastTouchDist = null;
+      lastTouchMid = null;
+    });
 
     // Redraw on resize and set origin to center (customize panX/panY for initial view)
     window.addEventListener('resize', () => {
