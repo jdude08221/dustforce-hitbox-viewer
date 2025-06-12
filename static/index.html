@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: sans-serif; margin: 0; }
-    #controls { float: left; width: 220px; }
+    #controls { float: left; width: 220px; padding: 10px; box-sizing: border-box; }
     #canvas-container { margin-left: 240px; height: 100vh; }
     canvas { border: 1px solid #888; width: 100%; height: 100%; display: block; }
     ul { list-style: none; padding-left: 1em; }
@@ -53,6 +53,9 @@
   <div id="controls">
     <h3>Images</h3>
     <div id="tree"></div>
+    <h3>Stroke Width</h3>
+    <input id="stroke-width-slider" type="range" min="1" max="10" value="2" step="1">
+    <span id="stroke-width-value">2</span>
   </div>
   <div id="canvas-container">
     <canvas id="result" width="800" height="600"></canvas>
@@ -64,6 +67,7 @@
     let zoom = 2.0; // More zoomed in on initial load
     const unit = 48;
     const pxPerUnit = 1.0 / (48.0 / 95.0);
+    let strokeWidth = 3; // Default stroke width
 
     // Debug: Offset in overlay image pixels to align left side of reference hitbox with y-axis
     let overlayOffsetX = 65;
@@ -347,10 +351,9 @@
       // --- Draw hitbox rectangles from hitboxes.json ---
       ctx.save();
       ctx.scale(scale, scale);
-      ctx.lineWidth = 2 / zoom / scale;
+      ctx.lineWidth = strokeWidth / zoom / scale; // Use slider value for stroke width
       if (selectedFiles && hitboxData) {
         selectedFiles.forEach(fname => {
-          // Extract character code from filename (e.g., "ul_dm.png" -> "dm")
           let ch = fname.split('_')[1];
           if (ch) ch = ch.split('.')[0];
           let color = CHAR_COLORS[ch] || 'red';
@@ -371,10 +374,17 @@
         });
       }
       ctx.restore();
-      // --- End hitbox rectangles ---
-
       ctx.restore();
     }
+
+    // Update stroke width when slider changes
+    const strokeWidthSlider = document.getElementById('stroke-width-slider');
+    const strokeWidthValue = document.getElementById('stroke-width-value');
+    strokeWidthSlider.addEventListener('input', (e) => {
+      strokeWidth = parseInt(e.target.value, 10);
+      strokeWidthValue.textContent = strokeWidth;
+      drawAll(); // Redraw canvas with updated stroke width
+    });
 
     function updateImage() {
       overlayImg = null;
@@ -403,7 +413,6 @@
     canvas.addEventListener('wheel', e => {
       e.preventDefault();
       let scale = e.deltaY < 0 ? 1.1 : 0.9;
-      // Zoom around mouse
       let mx = (e.offsetX - panX) / zoom;
       let my = (e.offsetY - panY) / zoom;
       zoom *= scale;
@@ -482,7 +491,6 @@
       panY = canvas.height / 2 + 250;
       drawAll();
     });
-    // Set origin to center on initial load
     window.dispatchEvent(new Event('resize'));
   </script>
 </body>
